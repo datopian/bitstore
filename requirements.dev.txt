@@ -1,0 +1,6 @@
+-r requirements.txt
+pylama
+coverage
+coveralls
+pytest
+pytest-cov
