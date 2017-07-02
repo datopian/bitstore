@@ -8,7 +8,6 @@ BitStore is a DataHub microservice for storing blobs i.e. files. It is a lightwe
 
 ## Env Vars
 
-```
 * `SERVICE_NAME` - the name of this microservice. Used for permission checking in auth and for url mountpoint of application
   * default = rawstore
 * `DATAHUB_PUBLIC_KEY` - the public key for communicating with the auth server. Get this from the auth server setup.
