@@ -9,8 +9,8 @@ install:
 
 script:
   - export
-  - pylama auth
-  - python -m pytest tests -sv --cov=auth
+  - pylama bitstore
+  - python -m pytest tests -sv --cov=bitstore
 
 after_success:
   - coveralls
