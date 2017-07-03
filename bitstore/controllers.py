@@ -14,6 +14,7 @@ config = {}
 for key, value in os.environ.items():
     config[key.upper()] = value
 
+
 class S3Connection(object):
 
     def __init__(self):
