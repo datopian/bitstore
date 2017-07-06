@@ -1,4 +1,5 @@
 import json
+import server
 import unittest
 try:
     from unittest.mock import Mock, patch
@@ -103,3 +104,11 @@ class DataStoreTest(unittest.TestCase):
                               'https://s3s3s3/buckbuck/12345678',
                               'https://buckbuck:443/12345678',
                               'https://buckbuck/12345678'])
+
+    def test___404_rendered(self):
+        self.app = server.app.test_client()
+        response = self.app.get('/')
+        data = json.loads(response.data)
+        self.assertEqual(data.get('docs'), 'http://docs.datahub.io')
+        self.assertEqual(data.get('info'),
+            'rawstore service - part of the DataHub platform')
