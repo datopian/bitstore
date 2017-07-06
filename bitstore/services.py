@@ -48,7 +48,7 @@ def get_user_id(auth_token):
         return '__tests'
     try:
         token = jwt.decode(auth_token.encode('ascii'),
-                           public_key,
+                           PUBLIC_KEY,
                            algorithm='RS256')
         if token.get('permissions', {}).get('datapackage-upload', False):
             service = token.get('service')
