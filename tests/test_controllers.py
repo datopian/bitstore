@@ -37,20 +37,28 @@ class DataStoreTest(unittest.TestCase):
 
         # Various patches
         self.services = patch.object(module, 'services').start()
-        self.config = patch.object(module, 'config').start()
-        self.config.OS_STORAGE_BUCKET_NAME = 'buckbuck'
-        self.config.OS_S3_HOSTNAME = 's3s3s3'
+        # self.config = patch.object(module, 'config').start()
+        self.original_config = dict(module.config)
+        module.config['STORAGE_BUCKET_NAME'] = 'buckbuck'
+        module.config['STORAGE_HOSTNAME'] = 's3s3s3'
+        module.config['STORAGE_ACCESS_KEY_ID'] = ''
+        module.config['STORAGE_SECRET_ACCESS_KEY'] = ''
+        module.config['ACCESS_KEY_EXPIRES_IN'] = ''
         self.boto = patch.object(module, 'boto').start()
         self.bucket = self.boto.connect_s3().get_bucket()
         self.bucket.new_key().generate_url = Mock(
                     return_value='http://test.com?key=value')
+
+    def tearDown(self):
+        module.config = self.original_config
 
     # Tests
 
     def test___call___not_authorized(self):
         authorize = module.authorize
         self.services.verify = Mock(return_value=False)
-        self.assertEqual(authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD).status, '401 UNAUTHORIZED')
+        out = authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD)
+        self.assertEqual(out.status, '401 UNAUTHORIZED')
 
     def test___call___bad_request(self):
         authorize = module.authorize

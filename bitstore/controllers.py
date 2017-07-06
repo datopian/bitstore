@@ -17,18 +17,18 @@ for key, value in os.environ.items():
 class S3Connection(object):
 
     def __init__(self):
-        fake_s3 = '.' not in config.OS_S3_HOSTNAME
+        fake_s3 = '.' not in config['STORAGE_HOSTNAME']
         self.__connection = boto.connect_s3(
-                config.STORAGE_ACCESS_KEY_ID,
-                config.STORAGE_SECRET_ACCESS_KEY,
-                host=config.STORAGE_HOSTNAME,
+                config['STORAGE_ACCESS_KEY_ID'],
+                config['STORAGE_SECRET_ACCESS_KEY'],
+                host=config['STORAGE_HOSTNAME'],
                 calling_format=OrdinaryCallingFormat(),
                 is_secure=not fake_s3)
         if fake_s3:
-            bucket_name = config.STORAGE_BUCKET_NAME
+            bucket_name = config['STORAGE_BUCKET_NAME']
             self.__connection.create_bucket(bucket_name)
         self.bucket = self.__connection.get_bucket(
-                config.OS_STORAGE_BUCKET_NAME)
+                config['STORAGE_BUCKET_NAME'])
 
 
 def authorize(connection, auth_token, req_payload):
@@ -57,7 +57,7 @@ def authorize(connection, auth_token, req_payload):
                 s3headers['Content-Type'] = file['type']
             s3key = connection.bucket.new_key(s3path)
             s3url = s3key.generate_url(
-                    config.ACCESS_KEY_EXPIRES_IN, 'PUT',
+                    config['ACCESS_KEY_EXPIRES_IN'], 'PUT',
                     headers=s3headers)
             parsed = urlparse(s3url)
             upload_url = '{0}://{1}{2}'.format(
@@ -103,9 +103,9 @@ def info(auth_token):
         # Make response payload
         urls = []
         for scheme, port in [('http', '80'), ('https', '443')]:
-            for host, path in [(config.OS_S3_HOSTNAME,
-                                config.OS_STORAGE_BUCKET_NAME),
-                               (config.OS_STORAGE_BUCKET_NAME, '')]:
+            for host, path in [(config['STORAGE_HOSTNAME'],
+                                config['STORAGE_BUCKET_NAME']),
+                               (config['STORAGE_BUCKET_NAME'], '')]:
                 urls.extend([
                     '%s://%s:%s/%s' % (scheme, host, port, path),
                     '%s://%s/%s' % (scheme, host, path),
