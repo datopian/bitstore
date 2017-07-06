@@ -44,6 +44,7 @@ class DataStoreTest(unittest.TestCase):
         module.config['STORAGE_ACCESS_KEY_ID'] = ''
         module.config['STORAGE_SECRET_ACCESS_KEY'] = ''
         module.config['ACCESS_KEY_EXPIRES_IN'] = ''
+        module.config['BASE_PATH'] = '{owner}/{name}/{path}'
         self.boto = patch.object(module, 'boto').start()
         self.bucket = self.boto.connect_s3().get_bucket()
         self.bucket.new_key().generate_url = Mock(

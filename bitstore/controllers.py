@@ -8,7 +8,7 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qs
 from flask import request, Response
-from . import services
+from . import services, helpers
 
 config = {}
 for key, value in os.environ.items():
@@ -45,11 +45,17 @@ def authorize(connection, auth_token, req_payload):
             return Response(status=400)
         if not services.verify(auth_token, owner):
             return Response(status=401)
+        format_params = {
+            'owner': owner,
+            'dataset_name': dataset_name
+        }
 
         # Make response payload
         res_payload = {'filedata': {}}
         for path, file in req_payload['filedata'].items():
-            s3path = '{0}/{1}/{2}'.format(owner, dataset_name, path)
+            format_params['path'] = path
+            format_params.update(file)
+            s3path = helpers.generate_s3_path(config['BASE_PATH'], format_params)
             s3headers = {
                 'Content-Length': file['length'],
                 'Content-MD5': file['md5'],
