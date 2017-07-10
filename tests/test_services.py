@@ -7,10 +7,10 @@ import jwt
 # this corresponds to the default name set in the services.py
 # (it is configurable but setting to a different value here using os.environ is
 # problematic due to when os.environ gets imported in the main services.py)
-SERVICE_NAME = 'rawstore'
+SERVICE_NAME = 'world'
 
 # this corresponds to the default testing public key in the services.py
-PRIVATE_KEY = '''-----BEGIN RSA PRIVATE KEY-----
+PRIVATE_KEY = b'''-----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEAzSrV/SxRNKufc6f0GQIuYMASgBCOiJW5fvCnGtVMIrWvBQoC
 FAp9QwRHrbQrQJiPg6YqqnTvGhWssL5LMMvR8jXXOpFUKzYaSgYaQt1LNMCwtqMB
 0FGSDjBrbmEmnDSo6g0Naxhi+SJX3BMcce1WTgKRybv3N3F+gJ9d8wPkyx9xhd3H
@@ -38,17 +38,27 @@ LixyPP8SzJcH20iKdc9kS7weiQA0ldT2SYv6VT7IqgQ3i/qYdOmaggjBGaIuIB/B
 QZOJBnaSMVJFf/ZO1/1ilGVGfZZ3TMOA1TJlcTZisk56tRTbkivL9Q==
 -----END RSA PRIVATE KEY-----'''
 
+PUBLIC_KEY = b'''-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzSrV/SxRNKufc6f0GQIu
+YMASgBCOiJW5fvCnGtVMIrWvBQoCFAp9QwRHrbQrQJiPg6YqqnTvGhWssL5LMMvR
+8jXXOpFUKzYaSgYaQt1LNMCwtqMB0FGSDjBrbmEmnDSo6g0Naxhi+SJX3BMcce1W
+TgKRybv3N3F+gJ9d8wPkyx9xhd3H4200lHk4T5XK5+LyAPSnP7FNUYTdJRRxKFWg
+ZFuII+Ex6mtUKU9LZsg9xeAC6033dmSYe5yWfdrFehmQvPBUVH4HLtL1fXTNyXuz
+ZwtO1v61Qc1u/j7gMsrHXW+4csjS3lDwiiPIg6q1hTA7QJdB1M+rja2MG+owL0U9
+owIDAQAB
+-----END PUBLIC KEY-----'''
+
 try:
     from unittest.mock import Mock, patch
 except ImportError:
     from mock import Mock, patch
 from importlib import import_module
 module = import_module('bitstore.services')
-
+module._public_key = PUBLIC_KEY
 
 token = {
     'userid': 'bla',
-    'permissions': {'datapackage-upload': True},
+    'permissions': {},
     'service': SERVICE_NAME
 }
 token = jwt.encode(token, PRIVATE_KEY, algorithm='RS256') \

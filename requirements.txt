@@ -4,4 +4,3 @@ flask-jsonpify
 pyjwt
 cryptography
 boto
-raven==6.0.0

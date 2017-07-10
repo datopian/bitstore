@@ -13,9 +13,7 @@ def make_blueprint():
 
     # Controller proxies
     def authorize():
-        auth_token = request.headers.get('Auth-Token')
-        if auth_token is None:
-            auth_token = request.values.get('jwt')
+        auth_token = request.headers.get('auth-token') or request.values.get('jwt')
         try:
             req_payload = json.loads(request.data.decode())
             return controllers.authorize(controllers.S3Connection(),
