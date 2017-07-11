@@ -13,8 +13,6 @@ def public_key():
         _public_key = requests.get(f'{auth_server}/auth/public-key').content
     return _public_key
 
-logging.error('PUBLIC KEY %s', public_key())
-
 
 def verify(auth_token, owner):
     """Verify Auth Token.
