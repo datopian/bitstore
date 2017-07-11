@@ -44,7 +44,7 @@ class DataStoreTest(unittest.TestCase):
         module.config['STORAGE_ACCESS_KEY_ID'] = ''
         module.config['STORAGE_SECRET_ACCESS_KEY'] = ''
         module.config['ACCESS_KEY_EXPIRES_IN'] = ''
-        module.config['BASE_PATH'] = '{owner}/{name}/{path}'
+        module.config['STORAGE_PATH_PATTERN'] = '{owner}/{dataset}/{path}'
         self.boto = patch.object(module, 'boto').start()
         self.bucket = self.boto.connect_s3().get_bucket()
         self.bucket.new_key().generate_url = Mock(
@@ -69,8 +69,7 @@ class DataStoreTest(unittest.TestCase):
 
     def test___call___good_request(self):
         self.services.verify = Mock(return_value=True)
-        authorize = module.authorize
-        ret = authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD)
+        ret = module.authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD)
         self.assertIs(type(ret),str)
         self.assertEqual(json.loads(ret), {
             'filedata': {
@@ -84,6 +83,24 @@ class DataStoreTest(unittest.TestCase):
             },
         })
         self.bucket.new_key.assert_called_with('owner/name/data/file1')
+
+    def test___call___good_request_with_md5_path(self):
+        module.config['STORAGE_PATH_PATTERN'] = '{md5}'
+        self.services.verify = Mock(return_value=True)
+        ret = module.authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD)
+        self.assertIs(type(ret),str)
+        self.assertEqual(json.loads(ret), {
+            'filedata': {
+                'data/file1': {
+                    'name': 'file1',
+                    'length': 100,
+                    'md5': 'aaa',
+                    'upload_url': 'http://test.com',
+                    'upload_query': {'key': ['value']},
+                },
+            },
+        })
+        self.bucket.new_key.assert_called_with('aaa')
 
     def test___info___not_authorized(self):
         info = module.info

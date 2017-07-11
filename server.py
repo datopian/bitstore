@@ -5,7 +5,7 @@ from flask import Flask
 from flask_cors import CORS
 import flask
 
-from bitstore import make_blueprint, helpers
+from bitstore import make_blueprint
 
 
 SERVICE_NAME = os.environ.get('DATAHUB_SERVICE_NAME', 'rawstore')

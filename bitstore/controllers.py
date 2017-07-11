@@ -7,7 +7,7 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qs
 from flask import request, Response
-from . import services, helpers
+from . import services
 
 config = {}
 for key, value in os.environ.items():
@@ -38,17 +38,22 @@ def authorize(connection, auth_token, req_payload):
             return Response(status=400)
         if not services.verify(auth_token, owner):
             return Response(status=401)
-        format_params = {
-            'owner': owner,
-            'dataset_name': dataset_name
-        }
 
         # Make response payload
         res_payload = {'filedata': {}}
         for path, file in req_payload['filedata'].items():
-            format_params['path'] = path
-            format_params.update(file)
-            s3path = helpers.generate_s3_path(config['BASE_PATH'], format_params)
+            format_params = dict(file)
+            format_params.update({
+                'owner': owner,
+                'dataset': dataset_name,
+                'path': path
+            })
+            try:
+                s3path = config['STORAGE_PATH_PATTERN'].format(**format_params)
+            except KeyError as e:
+                msg = ('STORAGE_PATH_PATTERN contains variable not found in file info: %s' % e)
+                raise Exception(msg)
+
             s3headers = {
                 'Content-Length': file['length'],
                 'Content-MD5': file['md5'],
@@ -78,7 +83,6 @@ def authorize(connection, auth_token, req_payload):
         return json.dumps(res_payload)
 
     except Exception as exception:
-
         raise
         # TODO: use logger
         # Log bad request exception

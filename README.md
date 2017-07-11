@@ -10,18 +10,16 @@ BitStore is a DataHub microservice for storing blobs i.e. files. It is a lightwe
 
 ## Env Vars
 
-* `SERVICE_NAME` - the name of this microservice. Used for permission checking in auth and for url mountpoint of application
-  * default = rawstore
-* `DATAHUB_PUBLIC_KEY` - the public key for communicating with the auth server. Get this from the auth server setup.
-* Config for the underlying objectstore service (boto compatible)
-* `BASE_PATH` - base path for upload URL on s3. May contain any format string available for a file in authorize API including {path} which is full path string (relative path to file in package)
-  * Example: `custom/path/{owner}/{name}/{path}` will end up with `custom/path/datahq/datax/data/file.csv`
-
+* `AUTH_SERVER` - the FQ URL of the auth server. Used for looking up the public key for communicating with the auth server from the auth server.
+* Object store: connection info for the underlying S3-style objectstore service
   ```
   STORAGE_ACCESS_KEY_ID
   STORAGE_SECRET_ACCESS_KEY
   STORAGE_BUCKET_NAME
   ```
+* `STORAGE_PATH_PATTERN` - pattern for generating the storage path in the objectstore for a given rile. That is, `object_store_path = make_path(STORAGE_PATH_PATTERN.format{fileinfo})`. May contain any format string available for a file in authorize API including `{path}` (relative path to file in package) and `{md5}`. Note: in addition to file info the owner and dataset (name) are available as `{owner}` and `{dataset}`. Examples:
+  * `custom/path/{owner}/{dataset}/{path}` will, given `{owner: datahq, name: datax, path: data/file.csv}` will end up with `custom/path/datahq/datax/data/file.csv` 
+  * `{md5}` - storage path is md5 hash of the file (assuming md5 hash is provided)
 
 Note: requested permissions to auth server will be like:
 
