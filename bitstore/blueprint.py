@@ -16,8 +16,7 @@ def make_blueprint():
         auth_token = request.headers.get('auth-token') or request.values.get('jwt')
         try:
             req_payload = json.loads(request.data.decode())
-            return controllers.authorize(controllers.S3Connection(),
-                                         auth_token, req_payload)
+            return controllers.authorize(auth_token, req_payload)
         except json.JSONDecodeError:
             return Response(status=400)
 

@@ -3,6 +3,6 @@ flask-cors
 flask-jsonpify
 pyjwt
 cryptography
-boto
+boto3
 requests
 

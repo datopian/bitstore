@@ -1,39 +1,38 @@
 import json
 import os
-
-import boto
 try:
     from urllib.parse import urlparse, parse_qs
 except ImportError:
     from urlparse import urlparse, parse_qs
+
+import boto3
+from botocore.client import Config
 from flask import request, Response
+
 from . import services
 
 config = {}
 for key, value in os.environ.items():
     config[key.upper()] = value
 
+def get_s3_client():
+    s3 = boto3.client('s3',
+          # region_name='us-east-1',
+          aws_access_key_id=config['STORAGE_ACCESS_KEY_ID'],
+          config=Config(signature_version='s3v4'),
+          aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY']
+          )
+    return s3
 
-class S3Connection(object):
-
-    def __init__(self):
-        self.__connection = boto.connect_s3(
-                config['STORAGE_ACCESS_KEY_ID'],
-                config['STORAGE_SECRET_ACCESS_KEY']
-                )
-        self.bucket = self.__connection.get_bucket(
-                config['STORAGE_BUCKET_NAME'])
-
-
-def authorize(connection, auth_token, req_payload):
+def authorize(auth_token, req_payload):
     """Authorize a client for the file uploading.
     """
-    # Verify client, deny access if not verified
-
+    s3 = get_s3_client()
     try:
         # Get request payload
         owner = req_payload.get('metadata', {}).get('owner')
         dataset_name = req_payload.get('metadata', {}).get('name')
+        # Verify client, deny access if not verified
         if owner is None or dataset_name is None:
             return Response(status=400)
         if not services.verify(auth_token, owner):
@@ -60,20 +59,19 @@ def authorize(connection, auth_token, req_payload):
             }
             if 'type' in file:
                 s3headers['Content-Type'] = file['type']
-            s3key = connection.bucket.new_key(s3path)
-            s3url = s3key.generate_url(
-                    config['ACCESS_KEY_EXPIRES_IN'], 'PUT',
-                    headers=s3headers)
-            parsed = urlparse(s3url)
-            upload_url = '{0}://{1}{2}'.format(
-                    parsed.scheme, parsed.netloc, parsed.path)
-            upload_query = parse_qs(parsed.query)
+            
+            post = s3.generate_presigned_post(
+                    Bucket=config['STORAGE_BUCKET_NAME'],
+                    Key=s3path,
+                    Fields=s3headers
+                    )
+
             filedata = {
                 'md5': file['md5'],
                 'name': file['name'],
                 'length': file['length'],
-                'upload_url': upload_url,
-                'upload_query': upload_query,
+                'upload_url': post['url'],
+                'upload_query': post['fields']
             }
             if 'type' in file:
                 filedata['type'] = file['type']

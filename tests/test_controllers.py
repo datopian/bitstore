@@ -5,6 +5,9 @@ try:
     from unittest.mock import Mock, patch
 except ImportError:
     from mock import Mock, patch
+from moto import mock_s3
+import boto3
+
 from importlib import import_module
 module = import_module('bitstore.controllers')
 
@@ -35,20 +38,15 @@ class DataStoreTest(unittest.TestCase):
 
         # Request patch
         self.request = patch.object(module, 'request').start()
-
         # Various patches
         self.services = patch.object(module, 'services').start()
-        # self.config = patch.object(module, 'config').start()
+
         self.original_config = dict(module.config)
         module.config['STORAGE_BUCKET_NAME'] = 'buckbuck'
         module.config['STORAGE_ACCESS_KEY_ID'] = ''
         module.config['STORAGE_SECRET_ACCESS_KEY'] = ''
         module.config['ACCESS_KEY_EXPIRES_IN'] = ''
         module.config['STORAGE_PATH_PATTERN'] = '{owner}/{dataset}/{path}'
-        self.boto = patch.object(module, 'boto').start()
-        self.bucket = self.boto.connect_s3().get_bucket()
-        self.bucket.new_key().generate_url = Mock(
-                    return_value='http://test.com?key=value')
 
     def tearDown(self):
         module.config = self.original_config
@@ -58,49 +56,46 @@ class DataStoreTest(unittest.TestCase):
     def test___call___not_authorized(self):
         authorize = module.authorize
         self.services.verify = Mock(return_value=False)
-        out = authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD)
+        out = authorize(AUTH_TOKEN, PAYLOAD)
         self.assertEqual(out.status, '401 UNAUTHORIZED')
 
     def test___call___bad_request(self):
         authorize = module.authorize
-        self.assertEqual(authorize(module.S3Connection(), AUTH_TOKEN, {
+        self.assertEqual(authorize(AUTH_TOKEN, {
             'bad': 'data',
         }).status, '400 BAD REQUEST')
 
+    @mock_s3
     def test___call___good_request(self):
-        self.services.verify = Mock(return_value=True)
-        ret = module.authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD)
-        self.assertIs(type(ret),str)
-        self.assertEqual(json.loads(ret), {
-            'filedata': {
-                'data/file1': {
-                    'name': 'file1',
-                    'length': 100,
-                    'md5': 'aaa',
-                    'upload_url': 'http://test.com',
-                    'upload_query': {'key': ['value']},
-                },
-            },
-        })
-        self.bucket.new_key.assert_called_with('owner/name/data/file1')
+        mockS3 = boto3.client('s3')
+        bucket_name = module.config['STORAGE_BUCKET_NAME']
+        mockS3.create_bucket(Bucket=bucket_name)
 
-    def test___call___good_request_with_md5_path(self):
-        module.config['STORAGE_PATH_PATTERN'] = '{md5}'
-        self.services.verify = Mock(return_value=True)
-        ret = module.authorize(module.S3Connection(), AUTH_TOKEN, PAYLOAD)
+        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
         self.assertIs(type(ret),str)
-        self.assertEqual(json.loads(ret), {
+        output = json.loads(ret)
+        query = output['filedata']['data/file1']['upload_query']
+        self.assertEqual(query['key'], 'owner/name/data/file1')
+        # this the s3 specific and is changing so we can't easily diff
+        del output['filedata']['data/file1']['upload_query']
+        self.maxDiff = 20000
+        self.assertEqual(output, {
             'filedata': {
                 'data/file1': {
                     'name': 'file1',
                     'length': 100,
                     'md5': 'aaa',
-                    'upload_url': 'http://test.com',
-                    'upload_query': {'key': ['value']},
-                },
-            },
+                    'upload_url': 'https://s3.amazonaws.com/' + module.config['STORAGE_BUCKET_NAME'],
+                }
+            }
         })
-        self.bucket.new_key.assert_called_with('aaa')
+
+        # now do it with md5 path ...
+        module.config['STORAGE_PATH_PATTERN'] = '{md5}'
+        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
+        output = json.loads(ret)
+        query = output['filedata']['data/file1']['upload_query']
+        self.assertEqual(query['key'], 'aaa')
 
     def test___info___not_authorized(self):
         info = module.info
