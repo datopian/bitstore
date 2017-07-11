@@ -1,6 +1,7 @@
 import os
 import requests
 import jwt
+import logging
 
 _public_key = None
 
@@ -11,6 +12,8 @@ def public_key():
         auth_server = os.environ.get('AUTH_SERVER')
         _public_key = requests.get(f'{auth_server}/auth/public-key').content
     return _public_key
+
+logging.error('PUBLIC KEY %s', public_key())
 
 
 def verify(auth_token, owner):
