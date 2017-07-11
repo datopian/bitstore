@@ -15,14 +15,16 @@ config = {}
 for key, value in os.environ.items():
     config[key.upper()] = value
 
+
 def get_s3_client():
     s3 = boto3.client('s3',
-          # region_name='us-east-1',
-          aws_access_key_id=config['STORAGE_ACCESS_KEY_ID'],
-          config=Config(signature_version='s3v4'),
-          aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY']
-          )
+                      # region_name='us-east-1',
+                      aws_access_key_id=config['STORAGE_ACCESS_KEY_ID'],
+                      config=Config(signature_version='s3v4'),
+                      aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY']
+                      )
     return s3
+
 
 def authorize(auth_token, req_payload):
     """Authorize a client for the file uploading.
@@ -59,7 +61,7 @@ def authorize(auth_token, req_payload):
             }
             if 'type' in file:
                 s3headers['Content-Type'] = file['type']
-            
+
             post = s3.generate_presigned_post(
                     Bucket=config['STORAGE_BUCKET_NAME'],
                     Key=s3path,
