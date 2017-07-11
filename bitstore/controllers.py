@@ -2,7 +2,6 @@ import json
 import os
 
 import boto
-from boto.s3.connection import OrdinaryCallingFormat
 try:
     from urllib.parse import urlparse, parse_qs
 except ImportError:
@@ -18,16 +17,10 @@ for key, value in os.environ.items():
 class S3Connection(object):
 
     def __init__(self):
-        fake_s3 = '.' not in config['STORAGE_HOSTNAME']
         self.__connection = boto.connect_s3(
                 config['STORAGE_ACCESS_KEY_ID'],
-                config['STORAGE_SECRET_ACCESS_KEY'],
-                host=config['STORAGE_HOSTNAME'],
-                calling_format=OrdinaryCallingFormat(),
-                is_secure=not fake_s3)
-        if fake_s3:
-            bucket_name = config['STORAGE_BUCKET_NAME']
-            self.__connection.create_bucket(bucket_name)
+                config['STORAGE_SECRET_ACCESS_KEY']
+                )
         self.bucket = self.__connection.get_bucket(
                 config['STORAGE_BUCKET_NAME'])
 
@@ -110,9 +103,7 @@ def info(auth_token):
         # Make response payload
         urls = []
         for scheme, port in [('http', '80'), ('https', '443')]:
-            for host, path in [(config['STORAGE_HOSTNAME'],
-                                config['STORAGE_BUCKET_NAME']),
-                               (config['STORAGE_BUCKET_NAME'], '')]:
+            for host, path in [(config['STORAGE_BUCKET_NAME'], '')]:
                 urls.extend([
                     '%s://%s:%s/%s' % (scheme, host, port, path),
                     '%s://%s/%s' % (scheme, host, path),

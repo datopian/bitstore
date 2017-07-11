@@ -41,7 +41,6 @@ class DataStoreTest(unittest.TestCase):
         # self.config = patch.object(module, 'config').start()
         self.original_config = dict(module.config)
         module.config['STORAGE_BUCKET_NAME'] = 'buckbuck'
-        module.config['STORAGE_HOSTNAME'] = 's3s3s3'
         module.config['STORAGE_ACCESS_KEY_ID'] = ''
         module.config['STORAGE_SECRET_ACCESS_KEY'] = ''
         module.config['ACCESS_KEY_EXPIRES_IN'] = ''
@@ -96,12 +95,8 @@ class DataStoreTest(unittest.TestCase):
         self.services.get_user_id = Mock(return_value='12345678')
         ret = json.loads(info(AUTH_TOKEN))
         self.assertListEqual(ret['prefixes'],
-                             ['http://s3s3s3:80/buckbuck/12345678',
-                              'http://s3s3s3/buckbuck/12345678',
-                              'http://buckbuck:80/12345678',
+                             ['http://buckbuck:80/12345678',
                               'http://buckbuck/12345678',
-                              'https://s3s3s3:443/buckbuck/12345678',
-                              'https://s3s3s3/buckbuck/12345678',
                               'https://buckbuck:443/12345678',
                               'https://buckbuck/12345678'])
 

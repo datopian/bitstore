@@ -15,12 +15,11 @@ BitStore is a DataHub microservice for storing blobs i.e. files. It is a lightwe
 * `DATAHUB_PUBLIC_KEY` - the public key for communicating with the auth server. Get this from the auth server setup.
 * Config for the underlying objectstore service (boto compatible)
 * `BASE_PATH` - base path for upload URL on s3. May contain any format string available for a file in authorize API including {path} which is full path string (relative path to file in package)
-  * Example: `custom/path/{owner}/{name}/{path}` will end up with `custom/path/datahq/datax/data/file.csv` 
+  * Example: `custom/path/{owner}/{name}/{path}` will end up with `custom/path/datahq/datax/data/file.csv`
 
   ```
   STORAGE_ACCESS_KEY_ID
   STORAGE_SECRET_ACCESS_KEY
-  STORAGE_HOSTNAME
   STORAGE_BUCKET_NAME
   ```
 
