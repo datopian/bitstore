@@ -56,6 +56,7 @@ def authorize(auth_token, req_payload):
                 raise Exception(msg)
 
             s3headers = {
+                'acl': 'public-read',
                 'Content-Length': file['length'],
                 'Content-MD5': file['md5'],
             }
