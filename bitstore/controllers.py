@@ -57,16 +57,21 @@ def authorize(auth_token, req_payload):
 
             s3headers = {
                 'acl': 'public-read',
-                'Content-Length': file['length'],
                 'Content-MD5': file['md5'],
+                'Content-Type': file.get('type', 'text/plain')
             }
-            if 'type' in file:
-                s3headers['Content-Type'] = file['type']
+
+            conditions = [
+                    {"acl": "public-read"},
+                    {"Content-Type": s3headers['Content-Type']},
+                    {"Content-MD5": s3headers['Content-MD5']}
+                ]
 
             post = s3.generate_presigned_post(
                     Bucket=config['STORAGE_BUCKET_NAME'],
                     Key=s3path,
-                    Fields=s3headers
+                    Fields=s3headers,
+                    Conditions=conditions
                     )
 
             filedata = {
