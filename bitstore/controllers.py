@@ -75,9 +75,6 @@ def authorize(auth_token, req_payload):
                     )
 
             filedata = {
-                'md5': file['md5'],
-                'name': file['name'],
-                'length': file['length'],
                 'upload_url': post['url'],
                 'upload_query': post['fields']
             }

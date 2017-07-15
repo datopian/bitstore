@@ -82,9 +82,6 @@ class DataStoreTest(unittest.TestCase):
         self.assertEqual(output, {
             'filedata': {
                 'data/file1': {
-                    'name': 'file1',
-                    'length': 100,
-                    'md5': 'aaa',
                     'upload_url': 'https://s3.amazonaws.com/' + module.config['STORAGE_BUCKET_NAME'],
                 }
             }
