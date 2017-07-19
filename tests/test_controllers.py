@@ -15,7 +15,7 @@ AUTH_TOKEN = "token"
 PAYLOAD = {
     'metadata': {
         'owner': 'owner',
-        'name': 'name',
+        'dataset': 'name',
     },
     'filedata': {
         'data/file1': {

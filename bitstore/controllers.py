@@ -33,7 +33,7 @@ def authorize(auth_token, req_payload):
     try:
         # Get request payload
         owner = req_payload.get('metadata', {}).get('owner')
-        dataset_name = req_payload.get('metadata', {}).get('name')
+        dataset_name = req_payload.get('metadata', {}).get('dataset', '')
         # Verify client, deny access if not verified
         if owner is None or dataset_name is None:
             return Response(status=400)
@@ -51,6 +51,8 @@ def authorize(auth_token, req_payload):
             })
             try:
                 s3path = config['STORAGE_PATH_PATTERN'].format(**format_params)
+                # Avoid double slash if "dataset" is not in req_payload (as it is optional)
+                s3path = s3path.replace('//', '/')
             except KeyError as e:
                 msg = ('STORAGE_PATH_PATTERN contains variable not found in file info: %s' % e)
                 raise Exception(msg)
