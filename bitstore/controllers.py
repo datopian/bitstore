@@ -33,9 +33,9 @@ def authorize(auth_token, req_payload):
     try:
         # Get request payload
         owner = req_payload.get('metadata', {}).get('owner')
-        dataset_name = req_payload.get('metadata', {}).get('name')
+        dataset_name = req_payload.get('metadata', {}).get('dataset')
         # Verify client, deny access if not verified
-        if owner is None or dataset_name is None:
+        if owner is None:
             return Response(status=400)
         if not services.verify(auth_token, owner):
             return Response(status=401)
