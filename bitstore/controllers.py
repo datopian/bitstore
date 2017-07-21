@@ -28,7 +28,7 @@ def get_s3_client():
     return s3
 
 
-def authorize(auth_token, req_payload):
+def authorize(auth_token, req_payload): # noqa
     """Authorize a client for the file uploading.
     """
     s3 = get_s3_client()
@@ -58,13 +58,15 @@ def authorize(auth_token, req_payload):
                 try:
                     md5 = base64.b64decode(format_params['md5'])
                     format_params['md5_hex'] = codecs.encode(md5, 'hex').decode('ascii')
-                except:
+                except: # noqa
                     pass
 
             try:
                 s3path = config['STORAGE_PATH_PATTERN'].format(**format_params)
             except KeyError as e:
                 msg = ('STORAGE_PATH_PATTERN contains variable not found in file info: %s' % e)
+                print(msg)
+                raise
             s3headers = {
                 'acl': 'public-read',
                 'Content-MD5': file['md5'],
