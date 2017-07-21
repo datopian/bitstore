@@ -17,8 +17,8 @@ def make_blueprint():
         try:
             req_payload = json.loads(request.data.decode())
             return controllers.authorize(auth_token, req_payload)
-        except json.JSONDecodeError:
-            return Response(status=400)
+        except (json.JSONDecodeError, ValueError) as e:
+            return Response(str(e), status=400)
 
     def info():
         auth_token = request.headers.get('Auth-Token')

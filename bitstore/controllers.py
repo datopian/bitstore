@@ -28,7 +28,33 @@ def get_s3_client():
     return s3
 
 
-def authorize(auth_token, req_payload): # noqa
+def format_s3_path(file, owner, dataset_name, path):
+    format_params = dict(file)
+    format_params.update({
+        'owner': owner,
+        'dataset': dataset_name,
+        'path': path,
+        'basename': os.path.basename(path),
+        'dirname': os.path.dirname(path),
+        'extension': os.path.splitext(path)[1],
+    })
+    if 'md5' in format_params:
+        try:
+            md5 = base64.b64decode(format_params['md5'])
+            format_params['md5_hex'] = codecs.encode(md5, 'hex').decode('ascii')
+        except Exception:
+            pass
+
+    try:
+        s3path = config['STORAGE_PATH_PATTERN'].format(**format_params)
+    except KeyError as e:
+        msg = ('STORAGE_PATH_PATTERN contains variable not found in file info: %s' % e)
+        raise ValueError(msg)
+
+    return s3path
+
+
+def authorize(auth_token, req_payload):
     """Authorize a client for the file uploading.
     """
     s3 = get_s3_client()
@@ -45,28 +71,8 @@ def authorize(auth_token, req_payload): # noqa
         # Make response payload
         res_payload = {'filedata': {}}
         for path, file in req_payload['filedata'].items():
-            format_params = dict(file)
-            format_params.update({
-                'owner': owner,
-                'dataset': dataset_name,
-                'path': path,
-                'basename': os.path.basename(path),
-                'dirname': os.path.dirname(path),
-                'extension': os.path.splitext(path)[1],
-            })
-            if 'md5' in format_params:
-                try:
-                    md5 = base64.b64decode(format_params['md5'])
-                    format_params['md5_hex'] = codecs.encode(md5, 'hex').decode('ascii')
-                except: # noqa
-                    pass
+            s3path = format_s3_path(file, owner, dataset_name, path)
 
-            try:
-                s3path = config['STORAGE_PATH_PATTERN'].format(**format_params)
-            except KeyError as e:
-                msg = ('STORAGE_PATH_PATTERN contains variable not found in file info: %s' % e)
-                print(msg)
-                raise
             s3headers = {
                 'acl': 'public-read',
                 'Content-MD5': file['md5'],
