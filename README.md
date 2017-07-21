@@ -17,7 +17,15 @@ BitStore is a DataHub microservice for storing blobs i.e. files. It is a lightwe
   STORAGE_SECRET_ACCESS_KEY
   STORAGE_BUCKET_NAME
   ```
-* `STORAGE_PATH_PATTERN` - pattern for generating the storage path in the objectstore for a given rile. That is, `object_store_path = make_path(STORAGE_PATH_PATTERN.format{fileinfo})`. May contain any format string available for a file in authorize API including `{path}` (relative path to file in package) and `{md5}`. Note: in addition to file info the owner and dataset (name) are available as `{owner}` and `{dataset}`. Examples:
+* `STORAGE_PATH_PATTERN` - pattern for generating the storage path in the objectstore for a given rile. That is, `object_store_path = make_path(STORAGE_PATH_PATTERN.format{fileinfo})`. May contain any format string available for a file in authorize API including
+    - `{path}` (relative path to file in package)
+    - `{md5}`. 
+    - `{basename}` which is the filename, extracted from the `{path}`
+    - `{dirname}` which is the dirname, extracted from the `{path}`
+    - `{extension}` which is the extension of the filename
+    - `{md5}` (and `{md5_hex}` which is the md5 in hex form)   
+    Note: in addition to file info the owner and dataset (name) are available as `{owner}` and `{dataset}`. 
+ Examples:
   * `custom/path/{owner}/{dataset}/{path}` will, given `{owner: datahq, name: datax, path: data/file.csv}` will end up with `custom/path/datahq/datax/data/file.csv` 
   * `{md5}` - storage path is md5 hash of the file (assuming md5 hash is provided)
 

@@ -21,7 +21,7 @@ PAYLOAD = {
         'data/file1': {
             'name': 'file1',
             'length': 100,
-            'md5': 'aaa',
+            'md5': 'BE4Y8L87GawEKKdchUNhlA==',
         },
     },
 }
@@ -88,11 +88,11 @@ class DataStoreTest(unittest.TestCase):
         })
 
         # now do it with md5 path ...
-        module.config['STORAGE_PATH_PATTERN'] = '{md5}'
+        module.config['STORAGE_PATH_PATTERN'] = '{md5_hex}'
         ret = module.authorize(AUTH_TOKEN, PAYLOAD)
         output = json.loads(ret)
         query = output['filedata']['data/file1']['upload_query']
-        self.assertEqual(query['key'], 'aaa')
+        self.assertEqual(query['key'], '044e18f0bf3b19ac0428a75c85436194')
 
     def test___info___not_authorized(self):
         info = module.info

@@ -1,3 +1,5 @@
+import base64
+import codecs
 import json
 import os
 try:
@@ -47,14 +49,22 @@ def authorize(auth_token, req_payload):
             format_params.update({
                 'owner': owner,
                 'dataset': dataset_name,
-                'path': path
+                'path': path,
+                'basename': os.path.basename(path),
+                'dirname': os.path.dirname(path),
+                'extension': os.path.splitext(path)[1],
             })
+            if 'md5' in format_params:
+                try:
+                    md5 = base64.b64decode(format_params['md5'])
+                    format_params['md5_hex'] = codecs.encode(md5, 'hex').decode('ascii')
+                except:
+                    pass
+
             try:
                 s3path = config['STORAGE_PATH_PATTERN'].format(**format_params)
             except KeyError as e:
                 msg = ('STORAGE_PATH_PATTERN contains variable not found in file info: %s' % e)
-                raise Exception(msg)
-
             s3headers = {
                 'acl': 'public-read',
                 'Content-MD5': file['md5'],
