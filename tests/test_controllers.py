@@ -18,8 +18,8 @@ PAYLOAD = {
         'dataset': 'name',
     },
     'filedata': {
-        'data/file1': {
-            'name': 'file1',
+        'data/file1.xls': {
+            'name': 'file1.xls',
             'length': 100,
             'md5': 'BE4Y8L87GawEKKdchUNhlA==',
         },
@@ -74,25 +74,25 @@ class DataStoreTest(unittest.TestCase):
         ret = module.authorize(AUTH_TOKEN, PAYLOAD)
         self.assertIs(type(ret),str)
         output = json.loads(ret)
-        query = output['filedata']['data/file1']['upload_query']
-        self.assertEqual(query['key'], 'owner/name/data/file1')
+        query = output['filedata']['data/file1.xls']['upload_query']
+        self.assertEqual(query['key'], 'owner/name/data/file1.xls')
         # this the s3 specific and is changing so we can't easily diff
-        del output['filedata']['data/file1']['upload_query']
+        del output['filedata']['data/file1.xls']['upload_query']
         self.maxDiff = 20000
         self.assertEqual(output, {
             'filedata': {
-                'data/file1': {
+                'data/file1.xls': {
                     'upload_url': 'https://s3.amazonaws.com/' + module.config['STORAGE_BUCKET_NAME'],
                 }
             }
         })
 
         # now do it with md5 path ...
-        module.config['STORAGE_PATH_PATTERN'] = '{md5_hex}'
+        module.config['STORAGE_PATH_PATTERN'] = '{md5_hex}{extension}'
         ret = module.authorize(AUTH_TOKEN, PAYLOAD)
         output = json.loads(ret)
-        query = output['filedata']['data/file1']['upload_query']
-        self.assertEqual(query['key'], '044e18f0bf3b19ac0428a75c85436194')
+        query = output['filedata']['data/file1.xls']['upload_query']
+        self.assertEqual(query['key'], '044e18f0bf3b19ac0428a75c85436194.xls')
 
     def test___info___not_authorized(self):
         info = module.info
