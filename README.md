@@ -4,9 +4,17 @@ BitStore is a DataHub microservice for storing blobs i.e. files. It is a lightwe
 
 ## Quick Start
 
-* Clone the repo,
-* install dependencies from requirements.txt,
-* and run the server (server.py)
+# Clone the repo and install 
+
+`make install`
+
+# Run tests
+
+`make test`
+
+# Run server
+
+`python server.py`
 
 ## Env Vars
 

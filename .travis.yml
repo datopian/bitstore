@@ -5,12 +5,7 @@ python:
   - 3.6
 
 install:
-  - pip install --upgrade -r requirements.dev.txt
+  - make install
 
 script:
-  - export
-  - pylama bitstore
-  - python -m pytest tests -sv --cov=bitstore
-
-after_success:
-  - coveralls
+  - make test
