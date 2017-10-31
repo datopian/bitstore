@@ -2,12 +2,17 @@ import base64
 import codecs
 import json
 import os
+
+import logging
+
+
 try:
     from urllib.parse import urlparse, parse_qs
 except ImportError:
     from urlparse import urlparse, parse_qs
 
 import boto3
+from boto3.exceptions import Boto3Error
 from botocore.client import Config
 from flask import request, Response
 
@@ -19,12 +24,19 @@ for key, value in os.environ.items():
 
 
 def get_s3_client():
+    endpoint_url = os.environ.get("S3_ENDPOINT_URL")
     s3 = boto3.client('s3',
                       # region_name='us-east-1',
                       aws_access_key_id=config['STORAGE_ACCESS_KEY_ID'],
                       config=Config(signature_version='s3v4'),
-                      aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY']
+                      aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY'],
+                      endpoint_url=endpoint_url
                       )
+    if endpoint_url:
+        try:
+            s3.create_bucket(Bucket=config['STORAGE_BUCKET_NAME'])
+        except Boto3Error:
+            pass
     return s3
 
 
@@ -104,12 +116,7 @@ def authorize(auth_token, req_payload):
         return json.dumps(res_payload)
 
     except Exception as exception:
-        raise
-        # TODO: use logger
-        # Log bad request exception
-        print('Bad request: {0}'.format(exception))
-
-        # Return request is bad
+        logging.exception('Bad request (authorize)')
         return Response(status=400)
 
 
@@ -142,11 +149,5 @@ def info(auth_token):
         return json.dumps(response_payload)
 
     except Exception as exception:
-
-        raise
-        # TODO: use logger
-        # Log bad request exception
-        print('Bad request: {0}'.format(exception))
-
-        # Return request is bad
+        logging.exception('Bad request (info)')
         return Response(status=400)
