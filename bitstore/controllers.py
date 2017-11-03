@@ -12,6 +12,7 @@ except ImportError:
     from urlparse import urlparse, parse_qs
 
 import boto3
+import botocore
 from boto3.exceptions import Boto3Error
 from botocore.client import Config
 from flask import request, Response
@@ -25,19 +26,27 @@ for key, value in os.environ.items():
 
 def get_s3_client():
     endpoint_url = os.environ.get("S3_ENDPOINT_URL")
-    s3 = boto3.client('s3',
-                      # region_name='us-east-1',
-                      aws_access_key_id=config['STORAGE_ACCESS_KEY_ID'],
-                      config=Config(signature_version='s3v4'),
-                      aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY'],
-                      endpoint_url=endpoint_url
-                      )
+    s3_client = boto3.client('s3',
+                             # region_name='us-east-1',
+                             aws_access_key_id=config['STORAGE_ACCESS_KEY_ID'],
+                             config=Config(signature_version='s3v4'),
+                             aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY'],
+                             endpoint_url=endpoint_url
+                             )
     if endpoint_url:
         try:
+            s3 = boto3.resource('s3',
+                                 aws_access_key_id=config['STORAGE_ACCESS_KEY_ID'],
+                                 config=Config(signature_version='s3v4'),
+                                 aws_secret_access_key=config['STORAGE_SECRET_ACCESS_KEY'],
+                                 endpoint_url=endpoint_url)
             s3.create_bucket(Bucket=config['STORAGE_BUCKET_NAME'])
-        except Boto3Error:
+            bucket = s3.Bucket(config['STORAGE_BUCKET_NAME'])
+            bucket.Acl().put(ACL='public-read')
+        except: # noqa
+            logging.exception('Failed to create the bucket')
             pass
-    return s3
+    return s3_client
 
 
 def format_s3_path(file, owner, dataset_name, path):
@@ -92,10 +101,10 @@ def authorize(auth_token, req_payload):
             }
 
             conditions = [
-                    {"acl": "public-read"},
-                    {"Content-Type": s3headers['Content-Type']},
-                    {"Content-MD5": s3headers['Content-MD5']}
-                ]
+                {"acl": "public-read"},
+                {"Content-Type": s3headers['Content-Type']},
+                {"Content-MD5": s3headers['Content-MD5']}
+            ]
 
             post = s3.generate_presigned_post(
                     Bucket=config['STORAGE_BUCKET_NAME'],
