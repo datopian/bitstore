@@ -105,7 +105,7 @@ class DataStoreTest(unittest.TestCase):
         output = json.loads(ret)
         query = output['filedata']['data/file1.xls']['upload_query']
         self.assertEqual(query['key'], 'owner/name/data/file1.xls')
-        self.assertEqual(query['acl'], ['private'])
+        self.assertEqual(query['acl'], 'private')
 
     def test___info___not_authorized(self):
         info = module.info

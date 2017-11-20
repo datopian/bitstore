@@ -86,7 +86,9 @@ def authorize(auth_token, req_payload):
         owner = metadata.get('owner')
         dataset_name = metadata.get('dataset')
         findability = metadata.get('findability')
-        acl = 'private' if findability == 'private' else 'public-read',
+        acl = 'public-read'
+        if findability == 'private':
+            acl = 'private'
 
         # Verify client, deny access if not verified
         if owner is None:
