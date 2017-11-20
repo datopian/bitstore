@@ -30,7 +30,7 @@ def make_blueprint():
         auth_token = request.headers.get('Auth-Token') or request.values.get('jwt')
         url = request.values.get('url')
         ownerid = request.values.get('ownerid')
-        controllers.presign(auth_token, url, ownerid)
+        return controllers.presign(auth_token, url, ownerid)
 
     # Register routes
     blueprint.add_url_rule(
