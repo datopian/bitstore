@@ -189,8 +189,9 @@ def presign(auth_token, url, ownerid=None):
         bucket = parsed_url.netloc
         key = parsed_url.path.lstrip('/')
 
+
         # Make sure file belongs to user (only in case of pkgstore)
-        if config['STORAGE_BUCKET_NAME'] != bucket and (ownerid not in url):
+        if (config['STORAGE_BUCKET_NAME'] != bucket) and (ownerid not in url):
             return Response(status=403)
 
         signed_url = s3.generate_presigned_url(
