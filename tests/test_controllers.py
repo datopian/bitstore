@@ -175,3 +175,14 @@ class DataStoreTest(unittest.TestCase):
         out = json.loads(presign(AUTH_TOKEN, url, 'owner'))
         self.assertTrue(out['url'].startswith('https://s3.amazonaws.com/buckbuck/owner/name'))
         self.assertTrue('Expires=86400' in out['url'])
+
+    @requests_mock.mock()
+    def test__checkurl__handles_path_style_urls(self, m):
+        presign = module.presign
+        url = 'http://{}/{}/{}/{}'.format(
+            's3.amazonaws.com', module.config['STORAGE_BUCKET_NAME'], 'owner', 'name')
+        m.head(url, status_code=403)
+        self.services.verify = Mock(return_value=True)
+        out = json.loads(presign(AUTH_TOKEN, url, 'owner'))
+        self.assertTrue(out['url'].startswith('https://s3.amazonaws.com/buckbuck/owner/name'))
+        self.assertTrue('Expires=86400' in out['url'])

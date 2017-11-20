@@ -188,7 +188,9 @@ def presign(auth_token, url, ownerid=None):
         parsed_url = urllib.parse.urlparse(url)
         bucket = parsed_url.netloc
         key = parsed_url.path.lstrip('/')
-
+        # Handle s3 path-style URLs
+        if bucket.endswith('amazonaws.com'):
+            bucket, key = key.split('/', 1)
 
         # Make sure file belongs to user (only in case of pkgstore)
         if (config['STORAGE_BUCKET_NAME'] != bucket) and (ownerid not in url):
