@@ -100,6 +100,10 @@ def authorize(auth_token, req_payload):
         res_payload = {'filedata': {}}
         for path, file in req_payload['filedata'].items():
             s3path = format_s3_path(file, owner, dataset_name, path)
+            bucket = config['STORAGE_BUCKET_NAME']
+
+            objs = s3.list_objects_v2(Bucket=bucket, Prefix=s3path)
+            exists = True if objs.get('KeyCount') else False
 
             s3headers = {
                 'acl': acl,
@@ -114,7 +118,7 @@ def authorize(auth_token, req_payload):
             ]
 
             post = s3.generate_presigned_post(
-                    Bucket=config['STORAGE_BUCKET_NAME'],
+                    Bucket=bucket,
                     Key=s3path,
                     Fields=s3headers,
                     Conditions=conditions
@@ -122,7 +126,8 @@ def authorize(auth_token, req_payload):
 
             filedata = {
                 'upload_url': post['url'],
-                'upload_query': post['fields']
+                'upload_query': post['fields'],
+                'exists': exists
             }
             if 'type' in file:
                 filedata['type'] = file['type']

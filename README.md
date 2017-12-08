@@ -115,7 +115,8 @@ Signed urls to upload into S3:
         'x-amz-date': '<date-time-in-ISO',
         'x-amz-signature': '...'
       },
-      "upload_url": "<s3-url>"
+      "upload_url": "<s3-url>",
+      "exists": true/false
     },
     "<file-name-2>": ...,
     ...

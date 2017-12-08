@@ -45,14 +45,12 @@ class DataStoreTest(unittest.TestCase):
         self.services = patch.object(module, 'services').start()
 
         self.original_config = dict(module.config)
-        module.config['STORAGE_BUCKET_NAME'] = 'buckbuck'
+        module.config['STORAGE_BUCKET_NAME'] = self.bucket = 'buckbuck'
         module.config['STORAGE_ACCESS_KEY_ID'] = ''
         module.config['STORAGE_SECRET_ACCESS_KEY'] = ''
         module.config['ACCESS_KEY_EXPIRES_IN'] = ''
         module.config['STORAGE_PATH_PATTERN'] = '{owner}/{dataset}/{path}'
         self.s3 = boto3.client('s3')
-        bucket_name = module.config['STORAGE_BUCKET_NAME']
-        self.s3.create_bucket(Bucket=bucket_name)
 
     def tearDown(self):
         module.config = self.original_config
@@ -73,6 +71,7 @@ class DataStoreTest(unittest.TestCase):
 
     @mock_s3
     def test___call___good_request(self):
+        self.s3.create_bucket(Bucket=self.bucket)
         ret = module.authorize(AUTH_TOKEN, PAYLOAD)
         self.assertIs(type(ret),str)
         output = json.loads(ret)
@@ -85,6 +84,38 @@ class DataStoreTest(unittest.TestCase):
             'filedata': {
                 'data/file1.xls': {
                     'upload_url': 'https://s3.amazonaws.com/' + module.config['STORAGE_BUCKET_NAME'],
+                    'exists': False
+                }
+            }
+        })
+
+        # now do it with md5 path ...
+        module.config['STORAGE_PATH_PATTERN'] = '{md5_hex}{extension}'
+        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
+        output = json.loads(ret)
+        query = output['filedata']['data/file1.xls']['upload_query']
+        self.assertEqual(query['key'], '044e18f0bf3b19ac0428a75c85436194.xls')
+
+    @mock_s3
+    def test___call___good_request_and_key_exists(self):
+        self.s3.create_bucket(Bucket=self.bucket)
+        self.s3.put_object(
+            ACL='public-read',
+            Bucket=self.bucket,
+            Key='owner/name/data/file1.xls')
+        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
+        self.assertIs(type(ret),str)
+        output = json.loads(ret)
+        query = output['filedata']['data/file1.xls']['upload_query']
+        self.assertEqual(query['key'], 'owner/name/data/file1.xls')
+        # this the s3 specific and is changing so we can't easily diff
+        del output['filedata']['data/file1.xls']['upload_query']
+        self.maxDiff = 20000
+        self.assertEqual(output, {
+            'filedata': {
+                'data/file1.xls': {
+                    'upload_url': 'https://s3.amazonaws.com/' + module.config['STORAGE_BUCKET_NAME'],
+                    'exists': True
                 }
             }
         })
@@ -98,6 +129,7 @@ class DataStoreTest(unittest.TestCase):
 
     @mock_s3
     def test___call___good_request_with_private_acl(self):
+        self.s3.create_bucket(Bucket=self.bucket)
         payload = copy.deepcopy(PAYLOAD)
         payload['metadata']['findability'] = 'private'
         ret = module.authorize(AUTH_TOKEN, payload)
