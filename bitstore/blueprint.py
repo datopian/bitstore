@@ -15,7 +15,7 @@ def make_blueprint():
     """Create blueprint.
     """
 
-    verifyer = Verifyer(auth_endpoint=f'http://{auth_server}/auth/public-key')
+    verifyer = Verifyer(auth_endpoint=f'{auth_server}/auth/public-key')
 
     # Create FileManager tables if not exists
     file_manager = FileManager(db_connection_string)
