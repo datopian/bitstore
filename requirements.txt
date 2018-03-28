@@ -1,3 +1,5 @@
+https://github.com/datahq/filemanager/archive/master.zip
+https://github.com/datahq/auth/archive/master.zip
 flask
 flask-cors
 flask-jsonpify
@@ -5,4 +7,3 @@ pyjwt
 cryptography
 boto3
 requests
-

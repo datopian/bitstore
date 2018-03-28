@@ -1,6 +1,7 @@
 import copy
+import datetime
 import json
-import server
+import jwt
 import unittest
 
 try:
@@ -11,10 +12,13 @@ from moto import mock_s3
 import boto3
 import requests_mock
 
+import auth
+from filemanager.models import FileManager
 from importlib import import_module
 module = import_module('bitstore.controllers')
 
-AUTH_TOKEN = "token"
+now = datetime.datetime.now()
+
 PAYLOAD = {
     'metadata': {
         'owner': 'owner',
@@ -29,6 +33,36 @@ PAYLOAD = {
     },
 }
 
+private_key = open('tests/private.pem').read()
+public_key = open('tests/public.pem').read()
+
+def generate_token(owner='owner', max_datasets=10, max_storage=1, max_private_storage=1):
+    ret = {
+        'userid': owner,
+        'permissions': {
+            'max_dataset_num': max_datasets,
+            'max_private_storage_mb': max_private_storage,
+            'max_public_storage_mb': max_storage
+        },
+        'service': 'source'
+    }
+    token = jwt.encode(ret, private_key, algorithm='RS256').decode('ascii')
+    return token
+
+
+def full_registry(pb_size=999901, pr_size=999901):
+    r = FileManager('sqlite://')
+    r.init_db()
+    r.add_file(
+        'testing.bucket', 'owner/file1.xls', 'unlisted',
+        'owner', 'owner', 'id', 'me/id/1', pb_size, now
+    )
+    r.add_file(
+        'testing.bucket', 'owner/file1.xls', 'private',
+        'owner', 'owner', 'id', 'me/id/1', pr_size, now
+    )
+    return r
+
 
 class DataStoreTest(unittest.TestCase):
 
@@ -42,8 +76,6 @@ class DataStoreTest(unittest.TestCase):
         # Request patch
         self.request = patch.object(module, 'request').start()
         # Various patches
-        self.services = patch.object(module, 'services').start()
-
         self.original_config = dict(module.config)
         module.config['STORAGE_BUCKET_NAME'] = self.bucket = 'buckbuck'
         module.config['STORAGE_ACCESS_KEY_ID'] = ''
@@ -59,20 +91,41 @@ class DataStoreTest(unittest.TestCase):
 
     def test___call___not_authorized(self):
         authorize = module.authorize
-        self.services.verify = Mock(return_value=False)
-        out = authorize(AUTH_TOKEN, PAYLOAD)
+        out = authorize(generate_token('not_owner'),
+                        PAYLOAD, auth.lib.Verifyer(public_key=public_key),
+                        full_registry())
         self.assertEqual(out.status, '401 UNAUTHORIZED')
+
+    def test___call___not_enough_public_space(self):
+        authorize = module.authorize
+        out = authorize(generate_token(),
+                        PAYLOAD, auth.lib.Verifyer(public_key=public_key),
+                        full_registry())
+        self.assertEqual(out.status, '403 FORBIDDEN')
+        self.assertEqual(out.response, [b'Max storage for user exceeded plan limit (1MB)'])
+
+    def test___call___not_enough_private_space(self):
+        authorize = module.authorize
+        private_payload = copy.deepcopy(PAYLOAD)
+        private_payload['metadata']['findability'] = 'private'
+        out = authorize(generate_token(),private_payload,
+                        auth.lib.Verifyer(public_key=public_key),
+                        full_registry())
+        self.assertEqual(out.status, '403 FORBIDDEN')
+        self.assertEqual(out.response, [b'Max private storage for user exceeded plan limit (1MB)'])
 
     def test___call___bad_request(self):
         authorize = module.authorize
-        self.assertEqual(authorize(AUTH_TOKEN, {
-            'bad': 'data',
-        }).status, '400 BAD REQUEST')
+        self.assertEqual(
+            authorize(generate_token(), {'bad': 'data'}, auth.lib.Verifyer(public_key=public_key), full_registry()
+        ).status, '400 BAD REQUEST')
 
     @mock_s3
     def test___call___good_request(self):
         self.s3.create_bucket(Bucket=self.bucket)
-        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
+        ret = module.authorize(generate_token(), PAYLOAD,
+                                auth.lib.Verifyer(public_key=public_key),
+                                full_registry(10, 10))
         self.assertIs(type(ret),str)
         output = json.loads(ret)
         query = output['filedata']['data/file1.xls']['upload_query']
@@ -91,7 +144,9 @@ class DataStoreTest(unittest.TestCase):
 
         # now do it with md5 path ...
         module.config['STORAGE_PATH_PATTERN'] = '{md5_hex}{extension}'
-        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
+        ret = module.authorize(generate_token(), PAYLOAD,
+                                auth.lib.Verifyer(public_key=public_key),
+                                full_registry(10, 10))
         output = json.loads(ret)
         query = output['filedata']['data/file1.xls']['upload_query']
         self.assertEqual(query['key'], '044e18f0bf3b19ac0428a75c85436194.xls')
@@ -103,7 +158,9 @@ class DataStoreTest(unittest.TestCase):
             ACL='public-read',
             Bucket=self.bucket,
             Key='owner/name/data/file1.xls')
-        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
+        ret = module.authorize(generate_token(), PAYLOAD,
+                                auth.lib.Verifyer(public_key=public_key),
+                                full_registry(10, 10))
         self.assertIs(type(ret),str)
         output = json.loads(ret)
         query = output['filedata']['data/file1.xls']['upload_query']
@@ -122,7 +179,9 @@ class DataStoreTest(unittest.TestCase):
 
         # now do it with md5 path ...
         module.config['STORAGE_PATH_PATTERN'] = '{md5_hex}{extension}'
-        ret = module.authorize(AUTH_TOKEN, PAYLOAD)
+        ret = module.authorize(generate_token(), PAYLOAD,
+                                auth.lib.Verifyer(public_key=public_key),
+                                full_registry(10, 10))
         output = json.loads(ret)
         query = output['filedata']['data/file1.xls']['upload_query']
         self.assertEqual(query['key'], '044e18f0bf3b19ac0428a75c85436194.xls')
@@ -132,7 +191,9 @@ class DataStoreTest(unittest.TestCase):
         self.s3.create_bucket(Bucket=self.bucket)
         payload = copy.deepcopy(PAYLOAD)
         payload['metadata']['findability'] = 'private'
-        ret = module.authorize(AUTH_TOKEN, payload)
+        ret = module.authorize(generate_token(), payload,
+                                auth.lib.Verifyer(public_key=public_key),
+                                full_registry(10, 10))
         self.assertIs(type(ret),str)
         output = json.loads(ret)
         query = output['filedata']['data/file1.xls']['upload_query']
@@ -141,43 +202,33 @@ class DataStoreTest(unittest.TestCase):
 
     def test___info___not_authorized(self):
         info = module.info
-        self.services.get_user_id = Mock(return_value=None)
-        self.assertEqual(info(AUTH_TOKEN).status, '401 UNAUTHORIZED')
+        self.assertEqual(
+            info('not_owner', auth.lib.Verifyer(public_key=public_key)
+        ).status, '401 UNAUTHORIZED')
 
     def test___info___good_request(self):
         info = module.info
-        self.services.get_user_id = Mock(return_value='12345678')
-        ret = json.loads(info(AUTH_TOKEN))
+        ret = json.loads(info(generate_token('12345678'), auth.lib.Verifyer(public_key=public_key)))
         self.assertListEqual(ret['prefixes'],
                              ['http://buckbuck:80/12345678',
                               'http://buckbuck/12345678',
                               'https://buckbuck:443/12345678',
                               'https://buckbuck/12345678'])
 
-    def test___404_rendered(self):
-        self.app = server.app.test_client()
-        response = self.app.get('/')
-        data = json.loads(response.data)
-        self.assertEqual(data.get('docs'), 'http://docs.datahub.io')
-        self.assertEqual(data.get('info'),
-            'rawstore service - part of the DataHub platform')
-
     @requests_mock.mock()
     def test__checkurl__returns_url_as_is_if_not_forbidden(self, m):
         presign = module.presign
         url = 'http://test.com'
         m.head(url, status_code=200)
-        out = json.loads(presign(AUTH_TOKEN, url, 'owner'))
+        out = json.loads(presign(generate_token(), url, auth.lib.Verifyer(public_key=public_key), 'owner'))
         self.assertEqual(out['url'], 'http://test.com')
-
 
     @requests_mock.mock()
     def test__checkurl__not_authorized(self, m):
         presign = module.presign
         url = 'http://{}/{}/{}'.format(module.config['STORAGE_BUCKET_NAME'], 'owner', 'name')
         m.head(url, status_code=403)
-        self.services.verify = Mock(return_value=False)
-        out = presign(AUTH_TOKEN, url, 'owner')
+        out = presign(generate_token(), url, auth.lib.Verifyer(public_key=public_key), 'not-owner')
         self.assertEqual(out.status, '403 FORBIDDEN')
 
     @requests_mock.mock()
@@ -185,8 +236,7 @@ class DataStoreTest(unittest.TestCase):
         presign = module.presign
         url = 'http://{}/{}/{}'.format(module.config['STORAGE_BUCKET_NAME'], 'owner', 'name')
         m.head(url, status_code=403)
-        self.services.verify = Mock(return_value=False)
-        out = presign(AUTH_TOKEN, url)
+        out = presign(generate_token(), url, auth.lib.Verifyer(public_key=public_key))
         self.assertEqual(out.status, '401 UNAUTHORIZED')
 
     @requests_mock.mock()
@@ -194,8 +244,7 @@ class DataStoreTest(unittest.TestCase):
         presign = module.presign
         url = 'http://{}/{}/{}'.format('pkgstore', 'owner', 'name')
         m.head(url, status_code=403)
-        self.services.verify = Mock(return_value=True)
-        out = presign(AUTH_TOKEN, url, 'notowner')
+        out = presign(generate_token(), url, auth.lib.Verifyer(public_key=public_key), 'notowner')
         self.assertEqual(out.status, '403 FORBIDDEN')
 
     @requests_mock.mock()
@@ -203,8 +252,7 @@ class DataStoreTest(unittest.TestCase):
         presign = module.presign
         url = 'http://{}/{}/{}'.format(module.config['STORAGE_BUCKET_NAME'], 'owner', 'name')
         m.head(url, status_code=403)
-        self.services.verify = Mock(return_value=True)
-        out = json.loads(presign(AUTH_TOKEN, url, 'owner'))
+        out = json.loads(presign(generate_token(), url, auth.lib.Verifyer(public_key=public_key), 'owner'))
         self.assertTrue(out['url'].startswith('https://s3.amazonaws.com/buckbuck/owner/name'))
         self.assertTrue('Expires=86400' in out['url'])
 
@@ -214,7 +262,6 @@ class DataStoreTest(unittest.TestCase):
         url = 'http://{}/{}/{}/{}'.format(
             's3.amazonaws.com', module.config['STORAGE_BUCKET_NAME'], 'owner', 'name')
         m.head(url, status_code=403)
-        self.services.verify = Mock(return_value=True)
-        out = json.loads(presign(AUTH_TOKEN, url, 'owner'))
+        out = json.loads(presign(generate_token(), url, auth.lib.Verifyer(public_key=public_key), 'owner'))
         self.assertTrue(out['url'].startswith('https://s3.amazonaws.com/buckbuck/owner/name'))
         self.assertTrue('Expires=86400' in out['url'])

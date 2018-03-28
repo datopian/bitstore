@@ -18,7 +18,8 @@ from boto3.exceptions import Boto3Error
 from botocore.client import Config
 from flask import request, Response
 
-from . import services
+import auth
+from filemanager.models import FileManager
 
 config = {}
 for key, value in os.environ.items():
@@ -76,7 +77,7 @@ def format_s3_path(file, owner, dataset_name, path):
     return s3path
 
 
-def authorize(auth_token, req_payload):
+def authorize(auth_token, req_payload, verifyer: auth.lib.Verifyer, registry: FileManager):
     """Authorize a client for the file uploading.
     """
     s3 = get_s3_client()
@@ -86,15 +87,32 @@ def authorize(auth_token, req_payload):
         owner = metadata.get('owner')
         dataset_name = metadata.get('dataset')
         findability = metadata.get('findability')
-        acl = 'public-read'
-        if findability == 'private':
-            acl = 'private'
+        is_private = findability == 'private'
+        acl = 'private' if is_private else 'public-read'
+        permissions = verifyer.extract_permissions(auth_token)
 
         # Verify client, deny access if not verified
         if owner is None:
             return Response(status=400)
-        if not services.verify(auth_token, owner):
+        if not permissions or permissions.get('userid') != owner:
             return Response(status=401)
+
+        limits = permissions.get('permissions')
+        limit = limits.get(
+            'max_private_storage_mb' if is_private else 'max_public_storage_mb', 0
+        )
+        current_storage = registry.get_total_size_for_owner(
+            owner, 'private' if is_private else None
+        )
+
+        total_bytes = 0
+        for file in req_payload['filedata'].values():
+            total_bytes += file['length']
+
+        if current_storage + total_bytes > limit * 1000000:
+            return Response(status=403,
+                response='Max %sstorage for user exceeded plan limit (%dMB)' % (
+                    'private ' if is_private else '', limit))
 
         # Make response payload
         res_payload = {'filedata': {}}
@@ -141,7 +159,7 @@ def authorize(auth_token, req_payload):
         return Response(status=400)
 
 
-def info(auth_token):
+def info(auth_token, verifyer: auth.lib.Verifyer):
     """Authorize a client for the file uploading.
     :param auth_token: authentication token to test
     """
@@ -149,9 +167,10 @@ def info(auth_token):
 
     try:
         # Get request payload
-        userid = services.get_user_id(auth_token)
-        if userid is None:
+        permissions = verifyer.extract_permissions(auth_token)
+        if not permissions:
             return Response(status=401)
+        userid = permissions.get('userid')
 
         # Make response payload
         urls = []
@@ -174,7 +193,7 @@ def info(auth_token):
         return Response(status=400)
 
 
-def presign(auth_token, url, ownerid=None):
+def presign(auth_token, url, verifyer: auth.lib.Verifyer, ownerid=None):
     """Generates S3 presigned URLs if necessary
     :param auth_token: authentication token from auth
     :param ownerid: ownerid for dataset
@@ -188,7 +207,8 @@ def presign(auth_token, url, ownerid=None):
         # Verify client, deny access if not verified
         if ownerid is None:
             return Response(status=401)
-        if not services.verify(auth_token, ownerid):
+        permissions = verifyer.extract_permissions(auth_token)
+        if not permissions or permissions.get('userid') != ownerid:
             return Response(status=403)
         parsed_url = urllib.parse.urlparse(url)
         bucket = parsed_url.netloc
