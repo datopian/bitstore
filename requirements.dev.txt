@@ -6,4 +6,4 @@ pytest
 pytest-cov
 moto
 requests-mock
-google_compute_engine
+google-compute-engine
