@@ -154,7 +154,7 @@ def authorize(auth_token, req_payload, verifyer: auth.lib.Verifyer, registry: Fi
         # Return response payload
         return json.dumps(res_payload)
 
-    except Exception as exception:
+    except Exception as exception: # noqa
         logging.exception('Bad request (authorize)')
         return Response(status=400)
 
@@ -188,7 +188,7 @@ def info(auth_token, verifyer: auth.lib.Verifyer):
         # Return response payload
         return json.dumps(response_payload)
 
-    except Exception as exception:
+    except Exception as exception: # noqa
         logging.exception('Bad request (info)')
         return Response(status=400)
 
@@ -229,6 +229,6 @@ def presign(auth_token, url, verifyer: auth.lib.Verifyer, ownerid=None):
             },
             ExpiresIn=3600*24)
         return json.dumps({'url': signed_url})
-    except Exception as exception:
+    except Exception as exception: # noqa
         logging.exception('Bad request')
         return Response(status=400)
